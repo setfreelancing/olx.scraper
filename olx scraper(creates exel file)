@@ -1,0 +1,55 @@
+import bs4
+import requests as rq
+import pandas as pa
+import os
+
+cat=['nedvizhimi-imoti','avtomobili-karavani-lodki','elektronika','sport-knigi-hobi','zhivotni','dom-i-gradina','moda',
+'za-bebeto-i-deteto','ekskurzii-pochivki','uslugi','mashini-instrumenti-biznes-oborudvane','rabota'
+,'podaryavam']
+try:
+ 
+    for i in cat:
+       
+        datarow = []
+        url='https://www.olx.bg/{}'.format(i) 
+        src=rq.get(url, auth=('user','pass'))            
+        soup=bs4.BeautifulSoup(src.content,'html.parser')
+        pages = soup.find('div',{"class":"pager rel clr"})
+        pagenumitem = pages.find_all("span", {"class": "item fleft"})
+        lastpage = pagenumitem[len(pagenumitem)-1]
+        pagenum = lastpage.find('span').text
+        for x in range(1,int(pagenum)): 
+            print("cat:",i,"page:",x)
+            
+            url='https://www.olx.bg/{0}/?page={1}'.format(i,x) 
+            src=rq.get(url, auth=('user','pass'))            
+            soup=bs4.BeautifulSoup(src.content,'html.parser')
+            table = soup.find('table', id="offers_table") 
+            rows = table.find_all("tr", {"class": "wrap"})
+            for minicell in rows:
+                titleMain = minicell.find('td', {"class": "title-cell"}) 
+                title =  titleMain.find('strong').text
+                
+                priceMain = minicell.find('p', {"class": "price"}) 
+                price =  priceMain.find('strong').text
+                
+           
+                bottomcell = minicell.find('td', {"class": "bottom-cell"}) 
+                locationItem = bottomcell.find('i',{"data-icon":"location-filled"}).parent
+                location = locationItem.text
+                
+                clockItem = bottomcell.find('i',{"data-icon":"clock"}).parent
+                clock = clockItem.text
+                datarow.append([title,price,location,clock])
+                 
+        dt_f = pa.DataFrame(data=datarow,columns=['title','price','location','clock'])
+        desktop = os.path.join(os.path.join(os.environ['USERPROFILE']), 'Desktop') +'/python'
+        isExist = os.path.exists(desktop)
+
+        if not isExist: 
+          os.makedirs(desktop)
+        csvpath = desktop+'/'+i+'.csv'
+        dt_f.to_csv(csvpath,index=False)
+
+except: 
+    print(src)
